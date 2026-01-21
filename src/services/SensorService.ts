@@ -45,6 +45,9 @@ class SensorService {
         const update = await this.sensorRepository.create(body);
         const sensorUpdate = await this.sensorRepository.merge(sensorExiste, update);
 
+        await this.sensorRepository.save(sensorUpdate);
+        return sensorUpdate;
+
     }
 
     public async deleteSensor(id: string) {
