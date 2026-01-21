@@ -1,52 +1,44 @@
 import { read, write } from '../utils/sensorFile.js';
-import type { Sensor } from '../types/Sensor.js';
 import { AppError } from '../errors/AppError.js';
+import { appDataSource } from '../database/appDataSource.js';
+import { Sensor } from '../entities/Sensor.js';
+
+
 
 class SensorService {
     private fileName = 'sensor.json';
     private sensorsMemoria: Sensor[] = []
-
+    private repositorySensor = appDataSource.getRepository(Sensor);
 
     public async getAllSensors(): Promise<Sensor[]> {
 
-        if(this.sensorsMemoria.length > 0) {
-            return this.sensorsMemoria;
-        }
-
-        const sensors = await read(this.fileName);
+        const sensors = await this.repositorySensor.find();
         return sensors;
     }
 
+
+    // Criar uma função que recupera um sensor pelo seu ID
+
     public async addSensor(body: unknown): Promise<Sensor> {
-
-        const {  type, serialNumber, location, status } = body as Sensor;
-
+        const { serialNumber, nome, descricao  } = body as Sensor;
         // validations 
-        if(!type || !serialNumber || !location || !status) {
+        if(!serialNumber || !nome) {
             throw new Error("Missing required sensor fields");
         }
-
-        const sensors = await this.getAllSensors();
-        const newSensor: Sensor = {
-            id: sensors.length + 1,
-            type,
-            serialNumber,
-            location,
-            status
+        const sensor = await this.repositorySensor.findOne({
+            where: {
+                serialNumber: serialNumber
+            },
+        })
+        if(sensor) {
+            throw new AppError(400, "Sensor já cadastrado!");
         }
-
-        if (sensors.includes(newSensor)) {
-            throw new Error("Sensor already exists");
-        }
-
-        sensors.push(newSensor);
-        this.sensorsMemoria = sensors;
-        await write(this.fileName, sensors);
-
-        return newSensor;
-
+        const novoSensor = { nome, serialNumber, descricao };
+        const sensorSerializado = this.repositorySensor.create(novoSensor as Sensor);
+        const sensorBanco = await this.repositorySensor.save(sensorSerializado)
+        return sensorBanco;
     }
-
+ /*
     public async updateSensor(id: string, body: Sensor) {
 
         const sensores = await this.getAllSensors();
@@ -82,6 +74,7 @@ class SensorService {
         return ;
 
     }
+        */
 }
 
 export default SensorService;

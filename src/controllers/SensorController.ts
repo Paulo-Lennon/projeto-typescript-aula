@@ -36,7 +36,7 @@ export default class SensorController {
         }
 
     }
-
+    /*
     public async updateSensor(req: Request, res: Response) {
         try {
             
@@ -67,5 +67,7 @@ export default class SensorController {
             }
         }
     }
+
+    */
 
 }
