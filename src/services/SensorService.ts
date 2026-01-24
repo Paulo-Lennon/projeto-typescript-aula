@@ -1,68 +1,68 @@
 import { read, write } from '../utils/sensorFile.js';
 import { AppError } from '../errors/AppError.js';
-import { appDataSource } from '../database/appDataSource.js';
-import { Sensor } from '../entities/Sensor.js';
-
-
+import { appDataSource } from '../database/dataSource.js';
+import Sensor from '../entities/Sensor.js';
 
 class SensorService {
     private fileName = 'sensor.json';
     private sensorsMemoria: Sensor[] = []
-    private repositorySensor = appDataSource.getRepository(Sensor);
+    private sensorRepository = appDataSource.getRepository(Sensor)
+
 
     public async getAllSensors(): Promise<Sensor[]> {
-
-        const sensors = await this.repositorySensor.find();
-        return sensors;
+        return await this.sensorRepository.find();
     }
 
 
     // Criar uma função que recupera um sensor pelo seu ID
 
     public async addSensor(body: unknown): Promise<Sensor> {
-        const { serialNumber, nome, descricao  } = body as Sensor;
+
+        const {  nome, serialNumber } = body as Sensor;
+
         // validations 
-        if(!serialNumber || !nome) {
+        if(!nome || !serialNumber) {
             throw new Error("Missing required sensor fields");
         }
-        const sensor = await this.repositorySensor.findOne({
-            where: {
-                serialNumber: serialNumber
-            },
-        })
-        if(sensor) {
+        const sensorExiste = await this.sensorRepository.findOne({ where: { serialNumber } })
+        if(sensorExiste) {
             throw new AppError(400, "Sensor já cadastrado!");
         }
-        const novoSensor = { nome, serialNumber, descricao };
-        const sensorSerializado = this.repositorySensor.create(novoSensor as Sensor);
-        const sensorBanco = await this.repositorySensor.save(sensorSerializado)
-        return sensorBanco;
+        const novoSensor = await this.sensorRepository.create({
+            nome,
+            serialNumber
+        })
+        await this.sensorRepository.save(novoSensor);
+        return novoSensor;
     }
  
     public async updateSensor(id: string, body: Sensor) {
-       const sensor = await this.repositorySensor.findOneBy({ id });
-       if(!sensor) {
-            throw new AppError(404, "Sensor não existe!");
-       }
-       const newSensor = await this.repositorySensor.create(body);
-       const updatedSensor = await this.repositorySensor.merge(sensor, newSensor);
-       await this.repositorySensor.save(updatedSensor)
-       return updatedSensor;
+
+        // Recupera
+        const sensorExiste = await this.sensorRepository.findOneBy({ id })  
+        
+        if(!sensorExiste) {
+            throw new AppError(400, "Sensor não foi encontrado!");
+        }
+
+        const update = await this.sensorRepository.create(body);
+        const sensorUpdate = await this.sensorRepository.merge(sensorExiste, update);
+
+        await this.sensorRepository.save(sensorUpdate);
+        return sensorUpdate;
+
     }
 
     public async deleteSensor(id: string) {
 
-        const sensor = await this.repositorySensor.findOneBy({
-            id
-        })
+        const sensor = await this.sensorRepository.findOneBy({ id});
 
-        if(!sensor) {
-            throw  new AppError(404, "Sensor não foi encontrado!");
+        if (!sensor) {
+            throw new AppError(400, "Sensor não encontrado");
         }
 
-        await this.repositorySensor.remove(sensor);
+        await this.sensorRepository.remove(sensor);
 
-        return
 
     }
 
